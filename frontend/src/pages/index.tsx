@@ -13,8 +13,9 @@ import { CheckCircleOutlined, CloudUploadOutlined, CommentOutlined, EllipsisOutl
 import { createStyles } from 'antd-style';
 import { Card, Typography, Space, Button, Flex, type GetProp, Badge } from 'antd';
 import React, { useEffect, useState } from 'react';
+import { createTask, getTaskEvents } from '@/api/taskApi';
 const { Paragraph, Text } = Typography;
-
+import agentXSVG from '@/assets/agent-x.svg';
 const renderTitle = (icon: React.ReactElement, title: string) => (
   <Space align="start">
     {icon}
@@ -24,7 +25,7 @@ const renderTitle = (icon: React.ReactElement, title: string) => (
 const defaultConversationsItems = [
   {
     key: '0',
-    label: 'What is Open Manus X?',
+    label: 'New Conversation',
   },
 ];
 
@@ -40,7 +41,6 @@ const useStyle = createStyles(({ token, css }) => {
       display: flex;
       background: ${token.colorBgContainer};
       font-family: AlibabaPuHuiTi, ${token.fontFamily}, sans-serif;
-
       .ant-prompts {
         color: ${token.colorText};
       }
@@ -54,7 +54,7 @@ const useStyle = createStyles(({ token, css }) => {
     `,
     thoughtChain: css`
       background: ${token.colorBgLayout}80;
-      width: 500px;
+      width: 800px;
       height: 90%;
       padding:10px;
       overflow-x: hidden;
@@ -117,27 +117,7 @@ const useStyle = createStyles(({ token, css }) => {
   };
 });
 
-const placeholderPromptsItems: GetProp<typeof Prompts, 'items'> = [
-  {
-    key: '1',
-    label: renderTitle(<FireOutlined style={{ color: '#FF4D4F' }} />, 'Hot Topics'),
-    description: 'What are you interested in?',
-    children: [
-      {
-        key: '1-1',
-        description: `What's new in X?`,
-      },
-      {
-        key: '1-2',
-        description: `What's AGI?`,
-      },
-      {
-        key: '1-3',
-        description: `Where is the doc?`,
-      },
-    ],
-  },
-];
+
 
 const senderPromptsItems: GetProp<typeof Prompts, 'items'> = [
   {
@@ -195,6 +175,10 @@ type AgentUserMessage = {
   type: 'user';
   content: string;
 };
+type AgentAIItemMessage = {
+  type: 'ai';
+  content: string;
+};
 
 type AgentAIMessage = {
   type: 'ai';
@@ -217,92 +201,7 @@ type BubbleMessage = {
   role: string;
 };
 
-const sampleThoughtChainItems: GetProp<typeof ThoughtChain, 'items'> = [
-  {
-    title: '用户输入',
-    description: "最近熱門信息",
-    icon: <CheckCircleOutlined />,
-    status: 'pending',
-    extra: <Button type="text" icon={<MoreOutlined />} />,
-    content: (
-      <Typography>
-        <Paragraph>
-          用户输入: "最近熱門信息"
-        </Paragraph>
-      </Typography>
-    ),
-  },
-  {
-    title: 'Processing Request',
-    description: 'Processing your request...',
-    icon: <InfoCircleOutlined />,
-    status: 'error',
-    extra: <Button type="text" icon={<MoreOutlined />} />,
-    content: (
-      <Typography>
-        <Paragraph>
-          Processing your request...
-        </Paragraph>
-      </Typography>
-    ),
-  },
-  {
-    title: 'Executing Step 1/20',
-    description: 'Navigating to https://news.google.com/',
-    icon: <InfoCircleOutlined />,
-    status: 'success',
-    extra: <Button type="text" icon={<MoreOutlined />} />,
-    content: (
-      <Typography>
-        <Paragraph>
-          Navigated to https://news.google.com/
-        </Paragraph>
-      </Typography>
-    ),
-  },
-  {
-    title: 'Executing Step 2/20',
-    description: 'Extracting top 10 news headlines',
-    icon: <InfoCircleOutlined />,
-    status: 'success',
-    extra: <Button type="text" icon={<MoreOutlined />} />,
-    content: (
-      <Typography>
-        <Paragraph>
-          Extracted from page:
-          <ul>
-            <li>南韓山火死者增至 19 人 灌救直昇機墜毀機師殉難</li>
-            <li>南韓山火增至最少24死 學校及體育館成為災民臨時安置中心</li>
-            <li>參與韓國山火救援的直升機墜毁飛行員遇難- 國際 - 香港文匯網</li>
-            <li>韓山火焚千年古剎威脅世遺- 20250326 - 公民</li>
-            <li>急症室第三類病人收費將不豁免 高拔陞：為免不必要爭拗</li>
-            <li>醫療費用減免︱二人家庭入息限額放寬至 22600 元 資產上限最高 72 萬 明年推網上申請︱Yahoo</li>
-            <li>門診處方藥「最多4周」惹關注 當局澄清4周僅為收費單位</li>
-            <li>公立醫院收費改革｜盧寵茂：急症室成本高 需按「輕症共付」原則分擔</li>
-            <li>消息：長江和記推進巴拿馬運河港口交易</li>
-            <li>烏克蘭戰爭：美國宣布俄烏同意黑海海上停火，俄進一步要求取消SWIFT在內多項制裁</li>
-          </ul>
-        </Paragraph>
-      </Typography>
-    ),
-  },
-  {
-    title: 'Task Completed',
-    description: 'The interaction has been completed with status: success',
-    icon: <InfoCircleOutlined />,
-    status: 'success',
-    extra: <Button type="text" icon={<MoreOutlined />} />,
-    footer: <Button block>文件下载</Button>,
-    content: (
-      <Typography>
-        <Paragraph>
-          The interaction has been completed with status: success
-        </Paragraph>
-      </Typography>
-    ),
-  },
-]
-const Independent: React.FC = () => {
+const AgentX: React.FC = () => {
   const { styles } = useStyle();
 
   const [headerOpen, setHeaderOpen] = React.useState(false);
@@ -313,68 +212,161 @@ const Independent: React.FC = () => {
   const [thoughtChainItems, setThoughtChainItems] = React.useState<GetProp<typeof ThoughtChain, 'items'>>([]);
   const thoughtChainRef = React.useRef<HTMLDivElement | null>(null);
 
-  const sleep = (timeout) => new Promise((resolve) => setTimeout(resolve, timeout || 1000));
-
   const [agent] = useXAgent<AgentMessage>({
     request: async ({ message }, { onSuccess }) => {
-      await sleep();
-
       const { content } = message || {};
-      onSuccess(
-        {
 
-          type: 'ai',
-          list: [
-            {
-              type: 'ai',
-              content: '南韓山火死者增至 19 人 灌救直昇機墜毀機師殉難',
-            },
-            {
-              type: 'ai',
-              content: '南韓山火增至最少24死 學校及體育館成為災民臨時安置中心',
-            },
-            {
-              type: 'ai',
-              content: '參與韓國山火救援的直升機墜毁飛行員遇難- 國際 - 香港文匯網',
-            },
-            {
-              type: 'ai',
-              content: '韓山火焚千年古剎威脅世遺- 20250326 - 公民',
-            },
-            {
-              type: 'ai',
-              content: '急症室第三類病人收費將不豁免 高拔陞：為免不必要爭拗',
-            },
-            {
-              type: 'ai',
-              content: '醫療費用減免︱二人家庭入息限額放寬至 22600 元 資產上限最高 72 萬 明年推網上申請︱Yahoo',
-            },
-            {
-              type: 'ai',
-              content: '門診處方藥「最多4周」惹關注 當局澄清4周僅為收費單位',
-            },
-            {
-              type: 'ai',
-              content: '公立醫院收費改革｜盧寵茂：急症室成本高 需按「輕症共付」原則分擔',
-            },
-            {
-              type: 'ai',
-              content: '消息：長江和記推進巴拿馬運河港口交易',
-            },
-            {
-              type: 'ai',
-              content: '烏克蘭戰爭：美國宣布俄烏同意黑海海上停火，俄進一步要求取消SWIFT在內多項制裁',
-            },
-          ],
+      try {
+        // 创建任务
+        const taskId = await createTask(content);
 
+        // 获取任务事件流
+        const eventSource = await getTaskEvents(taskId);
+        onSuccess(taskId)
+        const handleEvent = (event: MessageEvent, type: string) => {
+          try {
+            const data = JSON.parse(event.data);
+            let newMessage: { type: 'text'; content: string } = {
+              type: 'text',
+              content: JSON.stringify(data),
+            };
+            if (type === 'status') {
+              // 创建新的消息对象
+              // 处理任务状态
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: `Step ${data.steps.length}`,
+                  description: data.status,
+                  icon: <InfoCircleOutlined />,
+                  status: 'success',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.status}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            } else if (type === 'think') {
+              // 处理思考步骤
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: 'Thinking',
+                  description: data.result,
+                  icon: <InfoCircleOutlined />,
+                  status: 'processing',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.result}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            } else if (type === 'tool') {
+              // 处理工具执行步骤
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: 'Executing Tool',
+                  description: data.result,
+                  icon: <InfoCircleOutlined />,
+                  status: 'processing',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.result}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            } else if (type === 'act') {
+              // 处理行动步骤
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: 'Taking Action',
+                  description: data.result,
+                  icon: <InfoCircleOutlined />,
+                  status: 'processing',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.result}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            } else if (type === 'run') {
+              // 处理运行步骤
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: 'Running Step',
+                  description: data.result,
+                  icon: <InfoCircleOutlined />,
+                  status: 'processing',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.result}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            } else if (type === 'complete') {
+              // 处理任务完成事件
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: 'Task Completed',
+                  description: data.result,
+                  icon: <InfoCircleOutlined />,
+                  status: 'success',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.result}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            } else if (type === 'error') {
+              // 处理任务错误事件
+              setThoughtChainItems((prevItems) => [
+                ...prevItems,
+                {
+                  title: 'Task Error',
+                  description: data.message,
+                  icon: <InfoCircleOutlined />,
+                  status: 'error',
+                  content: (
+                    <Typography>
+                      <Paragraph>{data.message}</Paragraph>
+                    </Typography>
+                  ),
+                },
+              ]);
+            }
+            // 使用 setMessages 更新对话内容
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                message: newMessage,
+                status: 'success',
+              },
+            ]);
+          } catch (e) {
+            console.error(`Error handling ${type} event:`, e);
+          }
+        };
+
+        const eventTypes = ['status', 'think', 'tool', 'act', 'log', 'run', 'message', 'complete', 'error'];
+        eventTypes.forEach((type) => {
+          eventSource.addEventListener(type, (event) => handleEvent(event, type));
         });
 
-      for (let i = 0; i < sampleThoughtChainItems.length; i++) {
-        setThoughtChainItems((prevItems) => [
-          ...prevItems,
-          sampleThoughtChainItems[i]
-        ]);
-        await sleep(2000);
+        eventSource.onerror = () => {
+          eventSource.close();
+        };
+      } catch (error) {
+        console.error('Error processing task:', error);
       }
     },
   });
@@ -449,37 +441,6 @@ const Independent: React.FC = () => {
 
   const handleFileChange: GetProp<typeof Attachments, 'onChange'> = (info) =>
     setAttachedFiles(info.fileList);
-
-  const placeholderNode = (
-    <Space direction="vertical" size={16} className={styles.placeholder}>
-      <Welcome
-        variant="borderless"
-        icon="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*s5sNRo5LjfQAAAAAAAAAAAAADgCCAQ/fmt.webp"
-        title="Hello, I'm Open Manus X"
-        description="Base on Open Manus, AGI product interface solution, create a better intelligent vision~"
-        extra={
-          <Space>
-            <Button icon={<ShareAltOutlined />} />
-            <Button icon={<EllipsisOutlined />} />
-          </Space>
-        }
-      />
-      <Prompts
-        title="Do you want?"
-        items={placeholderPromptsItems}
-        styles={{
-          list: {
-            width: '100%',
-          },
-          item: {
-            flex: 1,
-          },
-        }}
-        onItemClick={onPromptsItemClick}
-      />
-    </Space>
-  );
-
   const attachmentsNode = (
     <Badge dot={attachedFiles.length > 0 && !headerOpen}>
       <Button type="text" icon={<PaperClipOutlined />} onClick={() => setHeaderOpen(!headerOpen)} />
@@ -517,7 +478,7 @@ const Independent: React.FC = () => {
   const logoNode = (
     <div className={styles.logo}>
       <img
-        src="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*eco6RrQhxbMAAAAAAAAAAAAADgCCAQ/original"
+        src={agentXSVG}
         draggable={false}
         alt="logo"
       />
@@ -539,6 +500,7 @@ const Independent: React.FC = () => {
         >
           New Conversation
         </Button>
+        {/* 占位 */}
         {/* 对话列表 */}
         <Conversations
           items={conversationsItems}
@@ -567,7 +529,7 @@ const Independent: React.FC = () => {
           onSubmit={onSubmit}
           onChange={setContent}
           prefix={attachmentsNode}
-          loading={agent.isRequesting()}
+          // loading={agent.isRequesting()}
           className={styles.sender}
         />
       </div>
@@ -581,5 +543,5 @@ const Independent: React.FC = () => {
   );
 };
 
-export default Independent;
+export default AgentX;
 
